@@ -27,6 +27,12 @@ class ViewController: UIViewController, XMLParserDelegate {
         if healthObjects.count % 1000 == 0{
             print(healthObjects.count)
         }
+        
+        //---
+        /*
+        if self.saveCount % 1000 == 0{
+            print(self.saveCount)
+        }*/
     }
     
     override func viewDidLoad() {
@@ -114,7 +120,7 @@ class ViewController: UIViewController, XMLParserDelegate {
                 startDate = _startDate
                 endDate = _endDate
                 value = _value
-            }else if elementName == "MetadataEntry"{
+            }else if self.inRecordFlag && elementName == "MetadataEntry"{
                 guard let key = attributeDict["key"] else { print("☠️004011 MetadataEntry key notfound"); return}
                 guard let value = attributeDict["value"] else { print("☠️004012 MetadataEntry value notfound"); return}
                 currentMetaData[key] = value
@@ -129,7 +135,6 @@ class ViewController: UIViewController, XMLParserDelegate {
     }
     
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-//        print("}elementName:", elementName)
         if inHealthDataFlag{
             if elementName == "Record"{
                 if self.type.contains("HKQuantity"){
@@ -190,10 +195,15 @@ class ViewController: UIViewController, XMLParserDelegate {
     }
     
     func parserDidEndDocument(_ parser: XMLParser) {
+        /// 即保存バージョン
+        
+        //---
+        
+        /// まとめて保存バージョン
         saveHealthKit()
     }
     
-    // MARK; - save to Health Kit
+    // MARK: - save to Health Kit
     
     let healthStore = HKHealthStore()
     
@@ -201,6 +211,8 @@ class ViewController: UIViewController, XMLParserDelegate {
     var typeDic: [HKSampleType : Int] = [:]
     //集計したデータ
     var healthObjects: [HKObject] = []
+    //保存したデータの数
+//    var saveCount: Int = 0
     
     @available(iOS 9.0, *)
     func getDevice(_ str: String?) -> HKDevice?{
@@ -215,11 +227,133 @@ class ViewController: UIViewController, XMLParserDelegate {
         return formatter.date(from: string)!
     }
     
-    //Qutantity
+    // もし'Invalid class NSTaggedPointerString for metadata key: HKWeatherTemperature. Expected HKQuantity.'などのエラーが出たらここをチェック
+    func loadMetadataEntry(metadata: [String: Any]?) -> [String : Any]?{
+        guard let metadata = metadata else { return nil }
+        var result = metadata
+        for (key, value) in metadata{
+            if #available(iOS 11.0, *) {
+                switch key{
+                case HKMetadataKeyTimeZone,
+                     HKMetadataKeyWasUserEntered,
+                     HKMetadataKeyWeatherCondition,
+                     HKMetadataKeySyncVersion,
+                     HKMetadataKeyWasTakenInLab,
+                     HKMetadataKeyReferenceRangeLowerLimit,
+                     HKMetadataKeyReferenceRangeUpperLimit,
+                     HKMetadataKeyBodyTemperatureSensorLocation,
+                     HKMetadataKeyHeartRateSensorLocation,
+                     HKMetadataKeyHeartRateMotionContext,
+                     HKMetadataKeyVO2MaxTestType,
+                     HKMetadataKeyBloodGlucoseMealTime,
+                     HKMetadataKeyInsulinDeliveryReason,
+                     HKMetadataKeyMenstrualCycleStart,
+                     HKMetadataKeySexualActivityProtectionUsed:
+                    //NSNumber系
+                    guard let i = Double(value as! String) else { continue }
+                    result.updateValue(NSNumber(value: i), forKey: key)
+                case HKMetadataKeyWeatherTemperature,
+                     HKMetadataKeyWeatherHumidity:
+                    result.removeValue(forKey: key)
+                case HKMetadataKeyDeviceSerialNumber,
+                     HKMetadataKeyUDIDeviceIdentifier,
+                     HKMetadataKeyUDIProductionIdentifier,
+                     HKMetadataKeyDigitalSignature,
+                     HKMetadataKeyDeviceName,
+                     HKMetadataKeyDeviceManufacturerName:
+                    // Device系
+                    result.removeValue(forKey: key)
+                default: break
+                }
+            }else if #available(iOS 10.0, *) {
+                switch key{
+                case HKMetadataKeyTimeZone,
+                     HKMetadataKeyWasUserEntered,
+                     HKMetadataKeyWeatherCondition,
+                     HKMetadataKeyWasTakenInLab,
+                     HKMetadataKeyReferenceRangeLowerLimit,
+                     HKMetadataKeyReferenceRangeUpperLimit,
+                     HKMetadataKeyBodyTemperatureSensorLocation,
+                     HKMetadataKeyHeartRateSensorLocation,
+                     HKMetadataKeyMenstrualCycleStart,
+                     HKMetadataKeySexualActivityProtectionUsed:
+                    //NSNumber系
+                    guard let i = Double(value as! String) else { continue }
+                    result.updateValue(NSNumber(value: i), forKey: key)
+                case HKMetadataKeyWeatherTemperature,
+                     HKMetadataKeyWeatherHumidity:
+                    result.removeValue(forKey: key)
+                case HKMetadataKeyDeviceSerialNumber,
+                     HKMetadataKeyUDIDeviceIdentifier,
+                     HKMetadataKeyUDIProductionIdentifier,
+                     HKMetadataKeyDigitalSignature,
+                     HKMetadataKeyDeviceName,
+                     HKMetadataKeyDeviceManufacturerName:
+                    // Device系
+                    result.removeValue(forKey: key)
+                default: break
+                }
+            }else if #available(iOS 9.0, *) {
+                switch key{
+                case HKMetadataKeyTimeZone,
+                     HKMetadataKeyWasUserEntered,
+                     HKMetadataKeyWasTakenInLab,
+                     HKMetadataKeyReferenceRangeLowerLimit,
+                     HKMetadataKeyReferenceRangeUpperLimit,
+                     HKMetadataKeyBodyTemperatureSensorLocation,
+                     HKMetadataKeyHeartRateSensorLocation,
+                     HKMetadataKeyMenstrualCycleStart,
+                     HKMetadataKeySexualActivityProtectionUsed:
+                    //NSNumber系
+                    guard let i = Double(value as! String) else { continue }
+                    result.updateValue(NSNumber(value: i), forKey: key)
+                case HKMetadataKeyDeviceSerialNumber,
+                     HKMetadataKeyUDIDeviceIdentifier,
+                     HKMetadataKeyUDIProductionIdentifier,
+                     HKMetadataKeyDigitalSignature,
+                     HKMetadataKeyDeviceName,
+                     HKMetadataKeyDeviceManufacturerName:
+                    // Device系
+                    result.removeValue(forKey: key)
+                default: break
+                }
+            } else {
+                switch key{
+                case HKMetadataKeyTimeZone,
+                     HKMetadataKeyWasUserEntered,
+                     HKMetadataKeyWasTakenInLab,
+                     HKMetadataKeyReferenceRangeLowerLimit,
+                     HKMetadataKeyReferenceRangeUpperLimit,
+                     HKMetadataKeyBodyTemperatureSensorLocation,
+                     HKMetadataKeyHeartRateSensorLocation:
+                    //NSNumber系
+                    guard let i = Double(value as! String) else { continue }
+                    result.updateValue(NSNumber(value: i), forKey: key)
+                case HKMetadataKeyDeviceSerialNumber,
+                     HKMetadataKeyUDIDeviceIdentifier,
+                     HKMetadataKeyUDIProductionIdentifier,
+                     HKMetadataKeyDigitalSignature,
+                     HKMetadataKeyDeviceName,
+                     HKMetadataKeyDeviceManufacturerName:
+                    // Device系
+                    result.removeValue(forKey: key)
+                default: break
+                }
+            }
+        }
+        return result
+    }
+    
+    //MARK: Qutantity
     func saveQuantity(type: String, device: String?, unit: String, startDate: String, endDate: String, value: String, metadata: [String : Any]?){
+        // 'Authorization to share the following types is disallowed: HKQuantityTypeIdentifierWalkingHeartRateAverage' 等
         guard type != "HKQuantityTypeIdentifierAppleExerciseTime" else { return }
+        guard type != "HKQuantityTypeIdentifierWalkingHeartRateAverage" else { return }
+        
         guard let quantityType = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier(rawValue: type)) else { print("☠️005101 nil type"); return }
         guard let doubleValue: Double = Double(value) else { print("☠️005102 nil double value"); return }
+        
+        /// まとめて保存用処理
         if let _ = typeDic[quantityType as HKSampleType]{
             typeDic[quantityType as HKSampleType]! += 1
         }else{
@@ -228,15 +362,92 @@ class ViewController: UIViewController, XMLParserDelegate {
         
         let quantityValue = HKQuantity(unit: HKUnit(from: unit), doubleValue: doubleValue)
         if #available(iOS 9.0, *) {
-            self.healthObjects.append(HKQuantitySample(type: quantityType, quantity: quantityValue, start: self.getDate(from: startDate), end: self.getDate(from: endDate), device: self.getDevice(device), metadata: metadata))
+            
+            /// まとめて保存バージョン
+            self.healthObjects.append(
+                HKQuantitySample(
+                    type: quantityType,
+                    quantity: quantityValue,
+                    start: self.getDate(from: startDate),
+                    end: self.getDate(from: endDate),
+                    device: self.getDevice(device),
+                    metadata: loadMetadataEntry(metadata: metadata)
+                )
+            )
+            
+            //---
+            
+            /// 即保存バージョン
+            /*DispatchQueue.global().async {
+                self.healthStore.requestAuthorization(toShare: [quantityType], read: nil) { (success, error) in
+                    if success{
+                        self.healthStore.save(
+                            HKQuantitySample(
+                                type: quantityType,
+                                quantity: quantityValue,
+                                start: self.getDate(from: startDate),
+                                end: self.getDate(from: endDate),
+                                device: self.getDevice(device),
+                                metadata: self.loadMetadataEntry(metadata: metadata)
+                            ),
+                            withCompletion: { (success, error) in
+                                if success{
+                                    print("save succeeded!")
+                                }else if let error = error{
+                                    print("☠️005001 save failed\n[error]:", error)
+                                }else{
+                                    print("☠️005002 save failed. nil error")
+                                }
+                        })
+                    }
+                }
+            }*/
         } else {
-            self.healthObjects.append(HKQuantitySample(type: quantityType, quantity: quantityValue, start: self.getDate(from: startDate), end: self.getDate(from: endDate), metadata: metadata))
+    
+            /// まとめて保存バージョン
+            self.healthObjects.append(
+                HKQuantitySample(
+                    type: quantityType,
+                    quantity: quantityValue,
+                    start: self.getDate(from: startDate),
+                    end: self.getDate(from: endDate),
+                    metadata: loadMetadataEntry(metadata: metadata)
+                )
+            )
+            
+            //---
+    
+            /// 即保存バージョン
+            /*DispatchQueue.global().async {
+                self.healthStore.requestAuthorization(toShare: [quantityType], read: nil) { (success, error) in
+                    if success{
+                        self.healthStore.save(
+                            HKQuantitySample(
+                                type: quantityType,
+                                quantity: quantityValue,
+                                start: self.getDate(from: startDate),
+                                end: self.getDate(from: endDate),
+                                metadata: self.loadMetadataEntry(metadata: metadata)
+                            ),
+                            withCompletion: { (success, error) in
+                                if success{
+                                    print("save succeeded!")
+                                }else if let error = error{
+                                    print("☠️005001 save failed\n[error]:", error)
+                                }else{
+                                    print("☠️005002 save failed. nil error")
+                                }
+                        })
+                    }
+                }
+            }*/
+            
         }
-        
+//        self.saveCount += 1
         updateStatus()
     }
     
-    //Category
+    //MARK: Category
     func getCategoryValue(value: String) -> Int{
         switch value{
         case "HKCategoryValueSleepAnalysisInBed":
@@ -299,6 +510,8 @@ class ViewController: UIViewController, XMLParserDelegate {
     func saveCategory(type: String, device: String?, startDate: String, endDate: String, value: String, metadata: [String : Any]?){
         guard type != "HKCategoryTypeIdentifierAppleStandHour" else { return }
         guard let categoryType = HKCategoryType.categoryType(forIdentifier: HKCategoryTypeIdentifier(rawValue:type)) else { print("☠️005201 nil type"); return }
+        
+        /// まとめて保存用処理
         if let _ = typeDic[categoryType as HKSampleType]{
             typeDic[categoryType as HKSampleType]! += 1
         }else{
@@ -306,15 +519,91 @@ class ViewController: UIViewController, XMLParserDelegate {
         }
         
         if #available(iOS 9.0, *) {
-            self.healthObjects.append(HKCategorySample(type: categoryType, value: getCategoryValue(value: value), start: self.getDate(from: startDate), end: self.getDate(from: endDate), device: self.getDevice(device), metadata: metadata?.mapValues({if let i = Int($0 as! String){return NSNumber(value: i)}else{return $0}})))
+            
+            /// まとめて保存バージョン
+            self.healthObjects.append(
+                HKCategorySample(
+                    type: categoryType,
+                    value: getCategoryValue(value: value),
+                    start: self.getDate(from: startDate),
+                    end: self.getDate(from: endDate),
+                    device: self.getDevice(device),
+                    metadata: loadMetadataEntry(metadata: metadata)
+                )
+            )
+            
+            //---
+            
+            /// 即保存バージョン
+            /*DispatchQueue.global().async {
+                self.healthStore.requestAuthorization(toShare: [categoryType], read: nil) { (success, error) in
+                    if success{
+                        self.healthStore.save(
+                            HKCategorySample(
+                                type: categoryType,
+                                value: self.getCategoryValue(value: value),
+                                start: self.getDate(from: startDate),
+                                end: self.getDate(from: endDate),
+                                device: self.getDevice(device),
+                                metadata: self.loadMetadataEntry(metadata: metadata)
+                            ),
+                            withCompletion: { (success, error) in
+                                if success{
+                                    print("save succeeded!")
+                                }else if let error = error{
+                                    print("☠️005001 save failed\n[error]:", error)
+                                }else{
+                                    print("☠️005002 save failed. nil error")
+                                }
+                        })
+                    }
+                }
+            }*/
         } else {
-            self.healthObjects.append(HKCategorySample(type: categoryType, value: getCategoryValue(value: value), start: self.getDate(from: startDate), end: self.getDate(from: endDate), metadata: metadata))
+            
+            /// まとめて保存バージョン
+            self.healthObjects.append(
+                HKCategorySample(
+                    type: categoryType,
+                    value: getCategoryValue(value: value),
+                    start: self.getDate(from: startDate),
+                    end: self.getDate(from: endDate),
+                    metadata: loadMetadataEntry(metadata: metadata)
+                )
+            )
+            
+            //---
+            
+            /// 即保存バージョン
+            /*DispatchQueue.global().async {
+                self.healthStore.requestAuthorization(toShare: [categoryType], read: nil) { (success, error) in
+                    if success{
+                        self.healthStore.save(
+                            HKCategorySample(
+                                type: categoryType,
+                                value: self.getCategoryValue(value: value),
+                                start: self.getDate(from: startDate),
+                                end: self.getDate(from: endDate),
+                                metadata: self.loadMetadataEntry(metadata: metadata)
+                            ),
+                            withCompletion: { (success, error) in
+                                if success{
+                                    print("save succeeded!")
+                                }else if let error = error{
+                                    print("☠️005001 save failed\n[error]:", error)
+                                }else{
+                                    print("☠️005002 save failed. nil error")
+                                }
+                        })
+                    }
+                }
+            }*/
         }
-        
+//        self.saveCount += 1
         updateStatus()
     }
 
-    //Workout
+    //MARK: Workout
     func getWorkoutActivityType(type: String) -> HKWorkoutActivityType{
         switch type{
         case "HKWorkoutActivityTypeAmericanFootball":
@@ -515,33 +804,48 @@ class ViewController: UIViewController, XMLParserDelegate {
     
     func saveWorkout(type: String, duration: String, durationUnit: String, totalDistance: String?, totalDistanceUnit: String?, totalEnergyBurned: String?, totalEnergyBurnedUnit: String?, device: String?, startDate: String, endDate: String){
         //まだ何もしてない
-        updateStatus()
+        //updateStatus()
     }
     
-    //ActivitySummery
+    //MARK: ActivitySummery
     
-    //save
+    //MARK: save
+    
     func saveHealthKit(){
         print(typeDic)
         print(healthObjects.count)
         let writeSet = Set(typeDic.keys)
-        self.healthStore.requestAuthorization(toShare: writeSet, read: nil){ (success, error) -> Void in
-            if success {
-                for i in 0...self.healthObjects.count{
-                    self.healthStore.save([self.healthObjects[i]], withCompletion: {(success, error) in
-                        if success {
-                            print("save succeeded! \(i)")
+        DispatchQueue.global().async {
+            self.healthStore.requestAuthorization(toShare: writeSet, read: nil){ (success, error) -> Void in
+                if success {
+                    /// バラバラに保存バージョン
+                    /*for i in 0...self.healthObjects.count{
+                        self.healthStore.save([self.healthObjects[i]], withCompletion: {(success, error) in
+                            if success {
+                                print("save succeeded! \(i)")
+                            }else if let error = error{
+                                print("☠️005001 save failed\n[error]:", error)
+                            }else{
+                                print("☠️005002 save failed. nil error")
+                            }
+                        })
+                    }*/
+                    
+                    /// まとめて保存バージョン
+                    self.healthStore.save(self.healthObjects, withCompletion: { (success, error) in
+                        if success{
+                            print("save succeeded!")
                         }else if let error = error{
                             print("☠️005001 save failed\n[error]:", error)
                         }else{
                             print("☠️005002 save failed. nil error")
                         }
                     })
+                    self.typeDic = [:]
+                    self.healthObjects = []
+                }else{
+                    print("☠️005000 requestAuthorization failed")
                 }
-                self.typeDic = [:]
-                self.healthObjects = []
-            }else{
-                print("☠️005000 requestAuthorization failed")
             }
         }
     }
