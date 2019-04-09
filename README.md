@@ -42,7 +42,7 @@ my blog page → [iPhone ヘルスケアデータをXMLからインポートす�
 1. After starting, stop the app
 1. Deploy the exported xml file to the app's documents directory. There are 2 ways, via iTunes File Sharing and via iOS's File.app.
 1. Run the app again and tap start button.
-1. You can see progress on Xcode.
+1. You can see progress on Xcode. In this picture, the app is running on a simulator.
 ![img](img/ss1.png)
 
 ## deploy via iTunes
